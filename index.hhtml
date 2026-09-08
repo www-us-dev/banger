@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astian's Big Picture Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; position: relative; }
+    
+    header { margin-bottom: 24px; }
+    header h1 { font-size: 1.6rem; color: #38bdf8; font-weight: 600; }
+    
+    /* View Controls */
+    .view { display: block; padding: 24px; padding-bottom: 120px; }
+    .hidden { display: none !important; }
+
+    /* LOGIN SCREEN STYLES */
+    #loginView {
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+      overflow: hidden;
+    }
+
+    /* Falling Cash Animation Overlay */
+    .cash-bg {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(16, 185, 129, 0.15) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    /* Bottom Sports Graphic Visual Container */
+    .sports-bottom-bg {
+      position: absolute;
+      bottom: 0; width: 100%; height: 120px;
+      display: flex; justify-content: center; align-items: flex-end;
+      gap: 30px; opacity: 0.25; pointer-events: none;
+      font-size: 4rem; padding-bottom: 10px;
+    }
+
+    .welcome-text {
+      font-size: 1.8rem; font-weight: 700; color: #38bdf8;
+      margin-bottom: 16px; text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+
+    .login-card {
+      background-color: #1e293b;
+      padding: 32px;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+      text-align: center;
+    }
+
+    .login-card h2 { font-size: 1.2rem; color: #f8fafc; margin-bottom: 20px; }
+
+    .responsible-text {
+      margin-top: 20px; font-size: 0.8rem; color: #94a3b8;
+      text-align: center; z-index: 10;
+    }
+
+    /* Dashboard Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .card {
+      background-color: #1e293b;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+    }
+    
+    .card-title { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .card-value { font-size: 1.4rem; font-weight: 700; color: #f8fafc; }
+    
+    .positive { color: #10b981; }
+    .negative { color: #ef4444; }
+    
+    /* Panels */
+    .panel {
+      background-color: #1e293b;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .panel-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+
+    /* Floating Navigation Controls */
+    .nav-container-bottom-left {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .action-btn {
+      background-color: #3b82f6;
+      color: #ffffff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease-in-out;
+      width: fit-content;
+    }
+    .action-btn:hover { background-color: #2563eb; transform: translateY(-2px); }
+    .action-btn.secondary { background-color: #475569; }
+    .action-btn.secondary:hover { background-color: #334155; }
+
+    /* Form & UI Helpers */
+    .back-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .back-btn:hover { background: #334155; color: #fff; }
+
+    .tab-group { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab-btn {
+      background: #334155;
+      color: #94a3b8;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tab-btn.active { background: #3b82f6; color: #ffffff; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .form-group.full-width { grid-column: span 2; }
+    
+    label { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
+    input, select, textarea {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus { outline: 1px solid #3b82f6; }
+    .subheading-input { font-style: italic; }
+
+    .submit-btn {
+      grid-column: span 2;
+      background-color: #10b981;
+      color: #ffffff;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .submit-btn:hover { background-color: #059669; }
+
+    /* Search Input Styling */
+    .search-box {
+      margin-bottom: 16px;
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 8px;
+      width: 100%;
+    }
+
+    /* History Table */
+    .history-table-container { overflow-x: auto; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th, td { padding: 12px; border-bottom: 1px solid #334155; }
+    th { color: #94a3b8; font-weight: 600; background-color: #0f172a; }
+  </style>
+</head>
+<body>
+
+  <!-- VIEW 0: LOGIN PHASE -->
+  <div id="loginView" class="view">
+    <div class="cash-bg"></div>
+    <div class="welcome-text">💵 Welcome to Astian's Betting System 💵</div>
+    
+    <div class="login-card">
+      <h2>System Authentication</h2>
+      <form onsubmit="event.preventDefault(); handleLogin();">
+        <div class="form-group full-width" style="margin-bottom: 16px;">
+          <label>Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter username..." required>
+        </div>
+        <button type="submit" class="submit-btn" style="background-color: #3b82f6;">Access Dashboard</button>
+      </form>
+    </div>
+
+    <div class="responsible-text">
+      🛡️ Stay safe and bet responsibly. Strictly 18+ only.
+    </div>
+
+    <!-- Sports imagery elements -->
+    <div class="sports-bottom-bg">
+      <span>🏀</span> <span>⚽</span> <span>🎾</span> <span>💵</span> <span>⚽</span> <span>🏀</span>
+    </div>
+  </div>
+
+
+  <!-- VIEW 1: DASHBOARD -->
+  <div id="dashboardView" class="view hidden">
+    <header>
+      <h1>Astian's Big Picture Dashboard</h1>
+    </header>
+
+    <!-- Metrics Grid (Displayed in USD) -->
+    <div class="metrics-grid">
+      <div class="card"><div class="card-title">Current Bankroll</div><div class="card-value" id="valBankroll">$0.00</div></div>
+      <div class="card"><div class="card-title">Total Amount Staked</div><div class="card-value" id="valStaked">$0.00</div></div>
+      <div class="card"><div class="card-title">Total Returns</div><div class="card-value" id="valReturns">$0.00</div></div>
+      <div class="card"><div class="card-title">Total Profit / Loss</div><div class="card-value" id="valProfit">$0.00</div></div>
+      <div class="card"><div class="card-title">Winning %</div><div class="card-value" id="valWinPct">0%</div></div>
+      <div class="card"><div class="card-title">Losing %</div><div class="card-value" id="valLossPct">0%</div></div>
+      <div class="card"><div class="card-title">ROI</div><div class="card-value" id="valRoi">0%</div></div>
+      <div class="card"><div class="card-title">Number of Bets</div><div class="card-value" id="valNumBets">0</div></div>
+      <div class="card"><div class="card-title">Selections (Won/Lost)</div><div class="card-value" id="valSelections">0 / 0</div></div>
+      <div class="card"><div class="card-title">Current Streak</div><div class="card-value" id="valStreak">-</div></div>
+      <div class="card"><div class="card-title">Today's Performance</div><div class="card-value" id="valToday">$0.00</div></div>
+    </div>
+
+    <!-- Bankroll Progression Graph -->
+    <div class="panel" style="max-width: 100%;">
+      <div class="panel-title">Bankroll Progression (USD)</div>
+      <canvas id="bankrollChart" height="90"></canvas>
+    </div>
+  </div>
+
+
+  <!-- VIEW 2: YOUR HISTORY PAGE -->
+  <div id="historyView" class="view hidden">
+    <header><h1>History & Logs</h1></header>
+    <div class="panel" style="max-width: 100%;">
+      <div class="panel-title">
+        <span>Your History</span>
+        <button class="back-btn" onclick="showView('dashboardView')">← Back to Dashboard</button>
+      </div>
+
+      <!-- Search Box -->
+      <input type="text" id="historySearch" class="search-box" placeholder="🔍 Search history by heading, owner, details, or sport..." oninput="renderHistory()">
+
+      <div class="history-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Project</th>
+              <th>Owner</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Stake (TZS)</th>
+              <th>Stake (USD)</th>
+              <th>Odds</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <!-- Dynamic entries inserted here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VIEW 3: NEW PROJECT FORM -->
+  <div id="newProjectView" class="view hidden">
+    <header><h1>Create New Project</h1></header>
+    <div class="panel">
+      <div class="panel-title">
+        <span>Project Details</span>
+        <button class="back-btn" onclick="showView('dashboardView')">← Back to Dashboard</button>
+      </div>
+
+      <form class="form-grid" onsubmit="event.preventDefault(); goToBetEntry();">
+        <div class="form-group full-width">
+          <label>Heading</label>
+          <input type="text" id="projHeading" placeholder="e.g. September Strategy" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Subheading</label>
+          <input type="text" id="projSubheading" class="subheading-input" placeholder="e.g. High odds European matches" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Objective</label>
+          <textarea id="projObjective" rows="3" placeholder="Explain the project goal..."></textarea>
+        </div>
+        <div class="form-group full-width">
+          <label>Owner</label>
+          <input type="text" id="projOwner" placeholder="e.g. Astian" required>
+        </div>
+        <button type="submit" class="submit-btn" style="background-color: #3b82f6;">Next (Continue) →</button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- VIEW 4: BET ENTRY FORM -->
+  <div id="betEntryView" class="view hidden">
+    <header><h1>Record Bet Entry</h1></header>
+    <div class="panel">
+      <div class="panel-title">
+        <span>Bet Entry System</span>
+        <button class="back-btn" onclick="showView('newProjectView')">← Back to New Project</button>
+      </div>
+      
+      <div class="tab-group">
+        <button class="tab-btn active" id="singleTab" onclick="switchBetType('single')">Single Bet</button>
+        <button class="tab-btn" id="accaTab" onclick="switchBetType('accumulator')">Accumulator</button>
+      </div>
+
+      <!-- Single Bet Form -->
+      <form id="singleForm" class="form-grid" onsubmit="event.preventDefault(); saveEntry('single');">
+        <div class="form-group"><label>Date</label><input type="date" id="sDate" required></div>
+        <div class="form-group"><label>Sport</label><input type="text" id="sSport" placeholder="Football" required></div>
+        <div class="form-group"><label>Competition</label><input type="text" id="sComp" placeholder="Premier League" required></div>
+        <div class="form-group"><label>Match</label><input type="text" id="sMatch" placeholder="Arsenal vs Chelsea" required></div>
+        <div class="form-group"><label>Bet Type</label><input type="text" id="sBetType" placeholder="Over 1.5 Goals" required></div>
+        <div class="form-group"><label>Odds</label><input type="number" step="0.01" id="sOdds" placeholder="1.85" required></div>
+        <div class="form-group"><label>Stake (TZS)</label><input type="number" id="sStake" placeholder="5000" required></div>
+        <div class="form-group">
+          <label>Result</label>
+          <select id="sResult"><option value="Won">Won</option><option value="Lost">Lost</option></select>
+        </div>
+        <div class="form-group full-width"><label>Reason</label><textarea id="sReason" rows="2" placeholder="Analysis notes..."></textarea></div>
+        <button type="submit" class="submit-btn">Save Entry & Update Dashboard</button>
+      </form>
+
+      <!-- Accumulator Form -->
+      <form id="accaForm" class="form-grid hidden" onsubmit="event.preventDefault(); saveEntry('accumulator');">
+        <div class="form-group"><label>Bet ID</label><input type="text" id="aBetId" placeholder="BET-001" required></div>
+        <div class="form-group"><label>Stake (TZS)</label><input type="number" id="aStake" placeholder="5000" required></div>
+        <div class="form-group"><label>Total Odds</label><input type="number" step="0.01" id="aOdds" placeholder="4.85" required></div>
+        <div class="form-group"><label>Selections Count</label><input type="number" id="aSelections" placeholder="5" required></div>
+        <div class="form-group full-width">
+          <label>Result</label>
+          <select id="aResult"><option value="Won">Won</option><option value="Lost">Lost</option></select>
+        </div>
+        <button type="submit" class="submit-btn">Save Accumulator & Update Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- FIXED BOTTOM-LEFT NAVIGATION BUTTONS -->
+  <div id="navContainer" class="nav-container-bottom-left hidden">
+    <button class="action-btn" onclick="showView('newProjectView')">➕ New Project</button>
+    <button class="action-btn secondary" onclick="showView('historyView')">📜 Your History</button>
+  </div>
+
+
+  <script>
+    const EXCHANGE_RATE = 2700; // 1 USD = 2700 TZS
+    let activeProject = {};
+    let entriesHistory = JSON.parse(localStorage.getItem('astian_bet_history')) || [];
+
+    // Authentication Logic
+    function handleLogin() {
+      const usernameInput = document.getElementById('loginUsername').value.trim();
+
+      if (usernameInput === "Astian") {
+        showView('dashboardView');
+        recalculateDashboard();
+      } else {
+        // Background email verification flow simulation
+        fetch('https://formspree.io/f/xvovjrvn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `Verification requested for user: ${usernameInput}`,
+            target_email: 'sebastianndayuwundi@gmail.com'
+          })
+        }).catch(() => {}); // Process silently in the background
+
+        alert(`Verification email request sent to sebastianndayuwundi@gmail.com. Refreshing page...`);
+        window.location.reload();
+      }
+    }
+
+    // View Routing Engine
+    function showView(viewId) {
+      document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+      document.getElementById(viewId).classList.remove('hidden');
+
+      const nav = document.getElementById('navContainer');
+      if (viewId === 'dashboardView') {
+        nav.classList.remove('hidden');
+        recalculateDashboard();
+      } else if (viewId === 'historyView') {
+        nav.classList.add('hidden');
+        renderHistory();
+      } else {
+        nav.classList.add('hidden');
+      }
+    }
+
+    function goToBetEntry() {
+      activeProject = {
+        heading: document.getElementById('projHeading').value,
+        subheading: document.getElementById('projSubheading').value,
+        objective: document.getElementById('projObjective').value,
+        owner: document.getElementById('projOwner').value
+      };
+      showView('betEntryView');
+    }
+
+    function switchBetType(type) {
+      if (type === 'single') {
+        document.getElementById('singleForm').classList.remove('hidden');
+        document.getElementById('accaForm').classList.add('hidden');
+        document.getElementById('singleTab').classList.add('active');
+        document.getElementById('accaTab').classList.remove('active');
+      } else {
+        document.getElementById('singleForm').classList.add('hidden');
+        document.getElementById('accaForm').classList.remove('hidden');
+        document.getElementById('singleTab').classList.remove('active');
+        document.getElementById('accaTab').classList.add('active');
+      }
+    }
+
+    // Save Entries to LocalStorage
+    function saveEntry(type) {
+      let record = { ...activeProject, entryType: type };
+
+      if (type === 'single') {
+        record.date = document.getElementById('sDate').value;
+        record.details = `${document.getElementById('sMatch').value} (${document.getElementById('sBetType').value})`;
+        record.stakeTzs = parseFloat(document.getElementById('sStake').value);
+        record.odds = parseFloat(document.getElementById('sOdds').value);
+        record.result = document.getElementById('sResult').value;
+        record.selectionsCount = 1;
+      } else {
+        record.date = new Date().toISOString().split('T')[0];
+        record.details = `Bet ID: ${document.getElementById('aBetId').value}`;
+        record.stakeTzs = parseFloat(document.getElementById('aStake').value);
+        record.odds = parseFloat(document.getElementById('aOdds').value);
+        record.result = document.getElementById('aResult').value;
+        record.selectionsCount = parseInt(document.getElementById('aSelections').value);
+      }
+
+      entriesHistory.push(record);
+      localStorage.setItem('astian_bet_history', JSON.stringify(entriesHistory));
+      
+      showView('dashboardView');
+    }
+
+    // Recalculate Dashboard in USD
+    function recalculateDashboard() {
+      let totalStakedTzs = 0;
+      let totalReturnsTzs = 0;
+      let wins = 0;
+      let losses = 0;
+      let wonSelections = 0;
+      let lostSelections = 0;
+      let chartLabels = ['Start'];
+      let chartDataUsd = [0];
+      let currentBankrollTzs = 0;
+
+      entriesHistory.forEach((item, index) => {
+        totalStakedTzs += item.stakeTzs;
+        if (item.result === 'Won') {
+          wins++;
+          wonSelections += item.selectionsCount;
+          let payout = item.stakeTzs * item.odds;
+          totalReturnsTzs += payout;
+          currentBankrollTzs += (payout - item.stakeTzs);
+        } else {
+          losses++;
+          lostSelections += item.selectionsCount;
+          currentBankrollTzs -= item.stakeTzs;
+        }
+        chartLabels.push(`Entry ${index + 1}`);
+        chartDataUsd.push((currentBankrollTzs / EXCHANGE_RATE).toFixed(2));
+      });
+
+      let totalBets = entriesHistory.length;
+      let totalProfitTzs = totalReturnsTzs - totalStakedTzs;
+      
+      // Convert TZS values to USD
+      let bankrollUsd = (currentBankrollTzs / EXCHANGE_RATE).toFixed(2);
+      let stakedUsd = (totalStakedTzs / EXCHANGE_RATE).toFixed(2);
+      let returnsUsd = (totalReturnsTzs / EXCHANGE_RATE).toFixed(2);
+      let profitUsd = (totalProfitTzs / EXCHANGE_RATE).toFixed(2);
+
+      let winPct = totalBets > 0 ? ((wins / totalBets) * 100).toFixed(1) : 0;
+      let lossPct = totalBets > 0 ? ((losses / totalBets) * 100).toFixed(1) : 0;
+      let roi = totalStakedTzs > 0 ? ((totalProfitTzs / totalStakedTzs) * 100).toFixed(1) : 0;
+
+      // Render Metrics to Dashboard DOM
+      document.getElementById('valBankroll').innerText = `$${parseFloat(bankrollUsd).toLocaleString()}`;
+      document.getElementById('valStaked').innerText = `$${parseFloat(stakedUsd).toLocaleString()}`;
+      document.getElementById('valReturns').innerText = `$${parseFloat(returnsUsd).toLocaleString()}`;
+      
+      const profEl = document.getElementById('valProfit');
+      profEl.innerText = `$${parseFloat(profitUsd).toLocaleString()}`;
+      profEl.className = profitUsd >= 0 ? 'card-value positive' : 'card-value negative';
+
+      document.getElementById('valWinPct').innerText = `${winPct}%`;
+      document.getElementById('valLossPct').innerText = `${lossPct}%`;
+      document.getElementById('valRoi').innerText = `${roi}%`;
+      document.getElementById('valNumBets').innerText = totalBets;
+      document.getElementById('valSelections').innerText = `${wonSelections} / ${lostSelections}`;
+      document.getElementById('valStreak').innerText = totalBets > 0 ? `${wins}W / ${losses}L` : '-';
+      document.getElementById('valToday').innerText = `$${parseFloat(profitUsd).toLocaleString()}`;
+
+      updateChart(chartLabels, chartDataUsd);
+    }
+
+    // Render History Page Table with Search Filtering
+    function renderHistory() {
+      const tbody = document.getElementById('historyTableBody');
+      const searchTerm = document.getElementById('historySearch')?.value.toLowerCase() || '';
+      tbody.innerHTML = '';
+
+      const filtered = entriesHistory.filter(item => {
+        return (
+          item.heading?.toLowerCase().includes(searchTerm) ||
+          item.owner?.toLowerCase().includes(searchTerm) ||
+          item.details?.toLowerCase().includes(searchTerm) ||
+          item.entryType?.toLowerCase().includes(searchTerm)
+        );
+      });
+
+      filtered.forEach(item => {
+        let usdStake = (item.stakeTzs / EXCHANGE_RATE).toFixed(2);
+        let tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.date}</td>
+          <td><strong>${item.heading}</strong><br><em>${item.subheading}</em></td>
+          <td>${item.owner}</td>
+          <td>${item.entryType}</td>
+          <td>${item.details}</td>
+          <td>TZS ${item.stakeTzs.toLocaleString()}</td>
+          <td>$${usdStake}</td>
+          <td>${item.odds}</td>
+          <td class="${item.result === 'Won' ? 'positive' : 'negative'}">${item.result}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Chart Configuration
+    const ctx = document.getElementById('bankrollChart').getContext('2d');
+    let bankrollChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Start'],
+        datasets: [{
+          label: 'Bankroll ($)',
+          data: [0],
+          borderColor: '#38bdf8',
+          borderWidth: 3,
+          fill: false,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+          y: { 
+            grid: { color: '#334155' }, 
+            ticks: { 
+              color: '#94a3b8',
+              callback: function(value) { return '$' + value; }
+            } 
+          }
+        }
+      }
+    });
+
+    function updateChart(labels, data) {
+      bankrollChart.data.labels = labels;
+      bankrollChart.data.datasets[0].data = data;
+      bankrollChart.update();
+    }
+  </script>
+</body>
+</html>
